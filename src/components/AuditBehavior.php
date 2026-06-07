@@ -2,9 +2,9 @@
 
 namespace illusiard\auditlog\components;
 
-use Yii;
+use Closure;
+use ReflectionClass;
 use yii\base\Behavior;
-use yii\base\InvalidConfigException;
 use yii\db\ActiveRecord;
 
 /**
@@ -29,15 +29,17 @@ class AuditBehavior extends Behavior
     /**
      * Контекст, который будет попадать в лог.
      * Можно передавать callable: fn(ActiveRecord $model, string $eventName): array
+     *
+     * @var array<string,mixed>|Closure|null
      */
-    public array|\Closure|null $context = null;
+    public array|Closure|null $context = null;
 
     /**
      * Пользователь, от имени которого пишем.
      * Можно передать callable: fn(): ?int
      * Если null — AuditLogger сам попробует взять Yii::$app->user->id
      */
-    public int|\Closure|null $userId = null;
+    public int|Closure|null $userId = null;
 
     /**
      * Писать ли лог внутри транзакции изменения модели.
@@ -49,6 +51,11 @@ class AuditBehavior extends Behavior
      * Снимок старых атрибутов до обновления, чтобы корректно посчитать diff.
      */
     private array $oldAttributesSnapshot = [];
+
+    /**
+     * Имена изменённых атрибутов до обновления.
+     */
+    private array $dirtyAttributeNames = [];
 
     public function events(): array
     {
@@ -67,6 +74,7 @@ class AuditBehavior extends Behavior
 
         // Снимок старых атрибутов перед изменением (на случай, если owner->oldAttributes поменяются)
         $this->oldAttributesSnapshot = $model->oldAttributes ?? [];
+        $this->dirtyAttributeNames    = array_keys($model->getDirtyAttributes());
     }
 
     public function afterInsert(): void
@@ -146,7 +154,7 @@ class AuditBehavior extends Behavior
         $t = preg_replace('~^\{\{%?(.+?)}}$~', '$1', $t);
         $t = ltrim((string)$t, '%');
 
-        return $t ?: (new \ReflectionClass($model))->getShortName();
+        return $t ?: new ReflectionClass($model)->getShortName();
     }
 
     private function resolveEntityId(ActiveRecord $model): int
@@ -168,7 +176,7 @@ class AuditBehavior extends Behavior
             return null;
         }
 
-        if ($this->context instanceof \Closure) {
+        if ($this->context instanceof Closure) {
             return (array)($this->context)($model, $actionCode);
         }
 
@@ -181,7 +189,7 @@ class AuditBehavior extends Behavior
             return null;
         }
 
-        if ($this->userId instanceof \Closure) {
+        if ($this->userId instanceof Closure) {
             $v = ($this->userId)();
 
             return $v === null ? null : (int)$v;
@@ -206,7 +214,7 @@ class AuditBehavior extends Behavior
         $newAttrs = $model->getAttributes();
         $oldAttrs = $this->oldAttributesSnapshot ?: ($model->oldAttributes ?? []);
 
-        $keys = $this->onlyDirty ? array_keys($model->getDirtyAttributes()) : array_keys($newAttrs);
+        $keys = $this->onlyDirty ? $this->dirtyAttributeNames : array_keys($newAttrs);
 
         $diff = [];
         foreach ($keys as $key) {

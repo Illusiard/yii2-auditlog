@@ -3,7 +3,6 @@
 namespace illusiard\auditlog\models;
 
 use illusiard\auditlog\components\AuditLogger;
-use Yii;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\web\IdentityInterface;
@@ -20,8 +19,8 @@ use yii\web\IdentityInterface;
  * @property ?string           $context
  * @property string            $created_at
  *
- * @property AuditAction       $action
- * @property AuditEntityType   $entityType
+ * @property AuditAction        $action
+ * @property AuditEntityType    $entityType
  * @property ?IdentityInterface $user
  */
 class AuditLog extends ActiveRecord
@@ -55,7 +54,7 @@ class AuditLog extends ActiveRecord
             ],
         ];
 
-        if (($userClass = AuditLogger::getInstance()->userClass) && $userClass instanceof ActiveRecord) {
+        if (($userClass = $this->getUserClass()) !== null) {
             $rules[] = [
                 ['user_id'],
                 'exist',
@@ -92,13 +91,26 @@ class AuditLog extends ActiveRecord
         return $this->hasOne(AuditEntityType::class, ['id' => 'entity_type_id']);
     }
 
-    public function getUser(): ?IdentityInterface
+    public function getUser(): ?ActiveQuery
     {
-        if (($userClass = AuditLogger::getInstance()->userClass) && $userClass instanceof ActiveRecord) {
+        if (($userClass = $this->getUserClass()) !== null) {
             return $this->hasOne($userClass, ['id' => 'user_id']);
         }
 
         return null;
     }
 
+    /**
+     * @return class-string<ActiveRecord>|null
+     */
+    private function getUserClass(): ?string
+    {
+        $userClass = AuditLogger::getInstance()->userClass;
+
+        if ($userClass === null || !is_a($userClass, ActiveRecord::class, true)) {
+            return null;
+        }
+
+        return $userClass;
+    }
 }

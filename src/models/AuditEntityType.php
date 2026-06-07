@@ -2,7 +2,6 @@
 
 namespace illusiard\auditlog\models;
 
-use Yii;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 
@@ -50,5 +49,4 @@ class AuditEntityType extends ActiveRecord
     {
         return $this->hasMany(AuditLog::class, ['entity_type_id' => 'id']);
     }
-
 }

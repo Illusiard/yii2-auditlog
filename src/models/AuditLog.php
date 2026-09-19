@@ -3,8 +3,10 @@
 namespace illusiard\auditlog\models;
 
 use illusiard\auditlog\components\AuditLogger;
+use yii\base\InvalidConfigException;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
+use yii\validators\Validator;
 use yii\web\IdentityInterface;
 
 /**
@@ -12,9 +14,9 @@ use yii\web\IdentityInterface;
  *
  * @property int               $id
  * @property int               $entity_type_id
- * @property int               $entity_id
+ * @property string            $entity_id
  * @property int               $action_id
- * @property ?int              $user_id
+ * @property ?string           $user_id
  * @property ?string           $diff
  * @property ?string           $context
  * @property string            $created_at
@@ -30,13 +32,18 @@ class AuditLog extends ActiveRecord
         return '{{%audit_log}}';
     }
 
+    /**
+     * @return array|array[]|Validator[]
+     * @throws InvalidConfigException
+     */
     public function rules(): array
     {
         $rules = [
             [['user_id', 'diff', 'context'], 'default', 'value' => null],
             [['entity_type_id', 'entity_id', 'action_id'], 'required'],
             [['entity_type_id', 'entity_id', 'action_id', 'user_id'], 'default', 'value' => null],
-            [['entity_type_id', 'entity_id', 'action_id', 'user_id'], 'integer'],
+            [['entity_type_id', 'action_id'], 'integer'],
+            [['entity_id', 'user_id'], 'string', 'max' => 64, 'strict' => false],
             [['diff', 'context', 'created_at'], 'safe'],
             [
                 ['action_id'],
@@ -91,6 +98,10 @@ class AuditLog extends ActiveRecord
         return $this->hasOne(AuditEntityType::class, ['id' => 'entity_type_id']);
     }
 
+    /**
+     * @return ?ActiveQuery
+     * @throws InvalidConfigException
+     */
     public function getUser(): ?ActiveQuery
     {
         if (($userClass = $this->getUserClass()) !== null) {
@@ -102,6 +113,7 @@ class AuditLog extends ActiveRecord
 
     /**
      * @return class-string<ActiveRecord>|null
+     * @throws InvalidConfigException
      */
     private function getUserClass(): ?string
     {

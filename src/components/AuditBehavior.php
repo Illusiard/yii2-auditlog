@@ -36,10 +36,10 @@ class AuditBehavior extends Behavior
 
     /**
      * Пользователь, от имени которого пишем.
-     * Можно передать callable: fn(): ?int
+     * Можно передать callable: fn(): int|string|null
      * Если null — AuditLogger сам попробует взять Yii::$app->user->id
      */
-    public int|Closure|null $userId = null;
+    public int|string|Closure|null $userId = null;
 
     /**
      * Писать ли лог внутри транзакции изменения модели.
@@ -157,17 +157,17 @@ class AuditBehavior extends Behavior
         return $t ?: new ReflectionClass($model)->getShortName();
     }
 
-    private function resolveEntityId(ActiveRecord $model): int
+    private function resolveEntityId(ActiveRecord $model): string
     {
         $pk = $model->getPrimaryKey();
 
         if (is_array($pk)) {
             $first = reset($pk);
 
-            return (int)$first;
+            return (string)$first;
         }
 
-        return (int)$pk;
+        return (string)$pk;
     }
 
     private function resolveContext(ActiveRecord $model, string $actionCode): ?array
@@ -183,7 +183,7 @@ class AuditBehavior extends Behavior
         return $this->context;
     }
 
-    private function resolveUserId(): ?int
+    private function resolveUserId(): ?string
     {
         if ($this->userId === null) {
             return null;
@@ -192,10 +192,10 @@ class AuditBehavior extends Behavior
         if ($this->userId instanceof Closure) {
             $v = ($this->userId)();
 
-            return $v === null ? null : (int)$v;
+            return $v === null ? null : (string)$v;
         }
 
-        return (int)$this->userId;
+        return (string)$this->userId;
     }
 
     private function buildCreateDiff(ActiveRecord $model): array

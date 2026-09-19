@@ -103,25 +103,25 @@ class AuditLogger extends Component
 
     /**
      * @param string $entityTypeCode
-     * @param int $entityId
+     * @param int|string $entityId
      * @param string $actionCode
      * @param ?array $diff
      * @param ?array $context
-     * @param ?int $userId
+     * @param int|string|null $userId
      * @return void
      * @throws Exception
      * @throws InvalidConfigException
      */
     public function log(
         string $entityTypeCode,
-        int $entityId,
+        int|string $entityId,
         string $actionCode,
         ?array $diff = null,
         ?array $context = null,
-        ?int $userId = null
+        int|string|null $userId = null
     ): void {
         if ($userId === null && ($user = $this->getUserComponent()) !== null && !$user->isGuest) {
-            $userId = (int)$user->id;
+            $userId = (string)$user->id;
         }
 
         $entityTypeId = $this->ensureEntityType($entityTypeCode);
@@ -129,9 +129,9 @@ class AuditLogger extends Component
 
         $log = new AuditLog([
             'entity_type_id' => $entityTypeId,
-            'entity_id'      => $entityId,
+            'entity_id'      => (string)$entityId,
             'action_id'      => $actionId,
-            'user_id'        => $userId,
+            'user_id'        => $userId === null ? null : (string)$userId,
             'diff'           => $this->encodeJson($diff),
             'context'        => $this->encodeJson($context),
         ]);
